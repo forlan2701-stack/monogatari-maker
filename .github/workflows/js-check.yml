@@ -1,0 +1,17 @@
+name: JS syntax check
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check story-engine-v9.js
+      - run: node --check story-engine-v10-sf.js
+      - run: node --check story-quality-guard.js
+      - run: node --check build-guard.js

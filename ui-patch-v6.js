@@ -2,32 +2,15 @@
   const X_URL='https://x.com/akariame_bunko';
   const BOARD_CATEGORIES=['ひとこと','感想','質問','機能アイデア'];
 
-  function visitorId(){
-    let id=localStorage.getItem('mm_visitor_id');
-    if(!id){
-      id='v'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
-      localStorage.setItem('mm_visitor_id',id);
-    }
-    return id;
-  }
   function todayJst(){
     const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
     const get=t=>parts.find(x=>x.type===t)?.value;
     return `${get('year')}-${get('month')}-${get('day')}`;
   }
-  async function registerVisit(){
-    const id=visitorId(),now=Date.now(),day=todayJst();
-    try{
-      await fetch(`${SUPABASE_URL}/rest/v1/site_visitors?on_conflict=visitor_id`,{
-        method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
-        body:JSON.stringify({visitor_id:id,first_seen:now,last_seen:now})
-      });
-      await fetch(`${SUPABASE_URL}/rest/v1/site_daily_visits?on_conflict=visitor_id,visit_date`,{
-        method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json',Prefer:'resolution=ignore-duplicates,return=minimal'},
-        body:JSON.stringify({visitor_id:id,visit_date:day,created:now})
-      });
-    }catch(e){}
-  }
+
+  // 旧「ユニーク訪問者」集計は停止。現在は visitor-access-v17.js のアクセス集計だけを使用する。
+  async function registerVisit(){return}
+
   async function countRows(table,query=''){
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=visitor_id${query}`,{
@@ -39,11 +22,12 @@
       const d=await r.json();return Array.isArray(d)?d.length:0;
     }catch{return 0}
   }
+
   async function visitorStats(){
     const day=todayJst();
     const [today,total]=await Promise.all([
-      countRows('site_daily_visits',`&visit_date=eq.${day}`),
-      countRows('site_visitors')
+      countRows('site_daily_visits',`&visitor_id=like.a:*&visit_date=eq.${day}`),
+      countRows('site_daily_visits','&visitor_id=like.a:*')
     ]);
     return{today,total};
   }
@@ -60,7 +44,6 @@
   window.home=async function(){
     nav('home');
     main.innerHTML=`${creditbar()}<div class="card">トップページを読み込み中…</div>`;
-    await registerVisit();
     const mineCount=books().length;
     const localPublished=books().filter(b=>b.published);
     const [cloud,likes,vis]=await Promise.all([cloudBooks(),fetchLikes(),visitorStats()]);
@@ -84,8 +67,8 @@
     <div class="grid2">
       <div class="card clickcard" onclick="go('mine')"><div class="num">${mineCount}</div><div class="meta">あなたが作った本　›</div></div>
       <div class="card clickcard" onclick="go('community')"><div class="num">${totalLikes}</div><div class="meta">みんなのいいね　›</div></div>
-      <div class="card"><div class="num">${vis.today.toLocaleString()}</div><div class="meta">今日の訪問者数</div></div>
-      <div class="card"><div class="num">${vis.total.toLocaleString()}</div><div class="meta">累計訪問者数</div></div>
+      <div class="card"><div class="num">${vis.today.toLocaleString()}</div><div class="meta">今日のアクセス数</div></div>
+      <div class="card"><div class="num">${vis.total.toLocaleString()}</div><div class="meta">累計アクセス数</div></div>
     </div>
     <div class="sectionline"><h2>コミュニティ</h2><button class="mini" onclick="board()">掲示板を見る</button></div>
     <div class="card clickcard" onclick="board()"><b>💬 みんなの掲示板</b><div class="meta" style="margin-top:6px">感想・質問・機能アイデア・ひとことを気軽にどうぞ。</div></div>
@@ -133,7 +116,6 @@
     }catch{toast('投稿できませんでした')}
   };
 
-  const originalCommunity=window.community;
   window.community=async function(){
     nav('community');
     main.innerHTML='<div class="card">読み込み中…</div>';
@@ -141,7 +123,6 @@
     main.innerHTML=`<div class="sectionline"><h2>みんなの本</h2><button class="mini" onclick="board()">💬 掲示板</button></div>${all.length?all.map(b=>`<div class="item"><span class="badge">${esc(b.genre||'物語')}</span><h3 onclick="openBook('${b.id}')">${esc(b.title)}</h3><div class="meta">${esc(b.summary||'')}</div><div class="row" style="margin-top:10px"><span class="meta">@${esc(b.author||'you')}</span><button class="likebtn" onclick="toggleLike('${b.id}')">♥ ${counts[b.id]||0}</button></div></div>`).join(''):`<div class="card"><b>まだ公開された本がありません。</b><div class="meta" style="margin-top:5px">最初の一冊を公開してみましょう。</div></div>`}${ad()}`;
   };
 
-  registerVisit();
   const params=new URLSearchParams(location.search||'');
   if(!params.get('book'))setTimeout(()=>{const active=document.querySelector('.nav button.active')?.dataset.page;if(!active||active==='home')home()},0);
 })();

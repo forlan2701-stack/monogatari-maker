@@ -1,0 +1,9 @@
+window.MM_ADSENSE_CONFIG={
+  enabled:false,
+  client:'',
+  slots:{
+    home:'',
+    community:'',
+    reader:''
+  }
+};

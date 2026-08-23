@@ -1,6 +1,6 @@
 window.MM_ADSENSE_CONFIG={
   enabled:false,
-  client:'',
+  client:'ca-pub-4589570890070256',
   slots:{
     home:'',
     community:'',
